@@ -106,8 +106,8 @@ to `conjugate_gradient`, our loop now contains quite a bit of code to
 merely report progress. It is also an infinite loop; a stopping
 condition would be additional code, and other common niceties include:
 
-- looking at only every 100th iteration,
-- time the cost of an iteration (but not the I/O!), 
+- looking at only every Nth iteration,
+- time the cost of an iteration (but not auxiliary I/O!), 
 - plot progress,
 - save progress, etc. 
 
