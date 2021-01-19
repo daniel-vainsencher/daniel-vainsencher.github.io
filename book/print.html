@@ -100,7 +100,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="conjugate_gradient_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="conjugate_gradient_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li><li class="chapter-item expanded affix "><a href="about.html">About</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -169,21 +169,26 @@
                 <div id="content" class="content">
                     <main>
                         <h1><a class="header" href="#a-story-about-conjugate-gradient-in-rust" id="a-story-about-conjugate-gradient-in-rust">A story about conjugate gradient in rust</a></h1>
-<p>Conjugate gradients (CG) is an iterative method for solving \(Ax =
-b\). It is limited to the case where the matrix \(A\) is positive
-semi definite (essentially, only scales vectors differently in
-different directions). By iterative method we mean a simple way to
-improve a solution, which we apply repeatedly starting from some
-initial value.</p>
-<p>This is the kind of numerical algorithm that Julia excels at, and XXX
-some guy link XXX used it to demonstrate how Julia iterables are
-wonderful way to express iterative algorithms, and also &quot;utilities&quot;
-useful across algorithms, like timing, skipping, stopping conditions
-etc.</p>
+<p><a href="https://en.wikipedia.org/wiki/Conjugate_gradient_method">Conjugate
+gradients</a>
+(CG) is an iterative method for solving \(Ax = b\). It is limited to
+the case where the matrix \(A\) is positive semi definite
+(essentially, only scales vectors differently in different
+directions). By <a href="https://en.wikipedia.org/wiki/Iterative_method">iterative
+method</a> we mean a
+simple way to improve a solution, which we apply repeatedly starting
+from some initial value.</p>
+<p>This is the kind of numerical algorithm that Julia excels at, and
+Lorenzo Stella used it to demonstrate in a
+<a href="https://lostella.github.io/2018/07/25/iterative-methods-done-right.html">post</a>
+(below IMDR) how Julia iterables are a wonderful way to express
+iterative algorithms, and also &quot;utilities&quot; useful across algorithms,
+like timing, skipping, stopping conditions etc.</p>
 <p>I like Rust quite a bit, it abstracts loops via iterators and custom
 abstractions are efficient. Could such a vocabulary work for rust as
-well? to avoid extranous distractions, I decided to follow in their
-footsteps, and essentially transcribed their implementation.</p>
+well? I decided to follow in their footsteps, and essentially
+transcribed their design to Rust using
+<a href="https://github.com/rust-ndarray/ndarray">ndarray</a>.</p>
 <p>My implementation ended up looking like this:</p>
 <pre><pre class="playground"><code class="language-rust">
 <span class="boring">#![allow(unused)]
@@ -200,18 +205,18 @@ footsteps, and essentially transcribed their implementation.</p>
 </span></code></pre></pre>
 <p>which is quite similar to their Julia version (itself very similar to
 the wikipedia rendition), except for being more explicit about memory
-usage. Oh, and except for the bug.</p>
-<p>To start, all seemed well. Following IMDR, we define a struct
-<code>CGIterable</code> whose fields hold almost all intermediate state of the
-algorithm. A function takes a problem (in this case, \(A,b\)) and
-returns a CGIterable, for which we implement the StreamingIterator
-trait. This trait is simple, and requires us to implement two methods:
+usage. Oh, and except for the bug. But to start with, all seemed well.</p>
+<p>Following IMDR, we define a struct <code>CGIterable</code> whose fields hold
+almost all intermediate state of the algorithm. A function takes a
+problem (in this case, \(A,b\)) and returns a CGIterable, for which
+we implement the StreamingIterator trait. </p>
+<p>This trait is simple, and requires us to implement two methods:
 <code>advance</code> (apply the code above to run an iteration of the algorithm)
 and <code>get</code> (borrowing <code>self</code>, return <code>Some(self)</code>). <code>get</code> returning the
 struct by reference is the main motivation to use StreamingIterator
 over the ubiquitous Iterator trait; it leaves any copying up to the
 implementor.</p>
-<p>The signatures for implementing a method is as follows:</p>
+<p>The signatures for implementing an iterative method in this style are as follows:</p>
 <pre><pre class="playground"><code class="language-rust">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -280,6 +285,11 @@ condition would be additional code, and other common niceties include:</p>
 and solve each problem once? and where is that bug? how does one even
 catch bugs in code that doesn't ever really finish?</p>
 <p>All those and more, next time.</p>
+<hr />
+<p>Thanks to Daniel Fox, a collaborator on this project.</p>
+<h1><a class="header" href="#about" id="about">About</a></h1>
+<p>I do applied research using ML, optimization and software engineering.</p>
+<p>Daniel Vainsencher</p>
 
                     </main>
 

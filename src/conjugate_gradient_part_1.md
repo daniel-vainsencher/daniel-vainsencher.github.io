@@ -1,22 +1,27 @@
 # A story about conjugate gradient in rust
 
-Conjugate gradients (CG) is an iterative method for solving \\(Ax =
-b\\). It is limited to the case where the matrix \\(A\\) is positive
-semi definite (essentially, only scales vectors differently in
-different directions). By iterative method we mean a simple way to
-improve a solution, which we apply repeatedly starting from some
-initial value.
+[Conjugate
+gradients](https://en.wikipedia.org/wiki/Conjugate_gradient_method)
+(CG) is an iterative method for solving \\(Ax = b\\). It is limited to
+the case where the matrix \\(A\\) is positive semi definite
+(essentially, only scales vectors differently in different
+directions). By [iterative
+method](https://en.wikipedia.org/wiki/Iterative_method) we mean a
+simple way to improve a solution, which we apply repeatedly starting
+from some initial value.
 
-This is the kind of numerical algorithm that Julia excels at, and XXX
-some guy link XXX used it to demonstrate how Julia iterables are
-wonderful way to express iterative algorithms, and also "utilities"
-useful across algorithms, like timing, skipping, stopping conditions
-etc.
+This is the kind of numerical algorithm that Julia excels at, and
+Lorenzo Stella used it to demonstrate in a
+[post](https://lostella.github.io/2018/07/25/iterative-methods-done-right.html)
+(below IMDR) how Julia iterables are a wonderful way to express
+iterative algorithms, and also "utilities" useful across algorithms,
+like timing, skipping, stopping conditions etc.
 
 I like Rust quite a bit, it abstracts loops via iterators and custom
 abstractions are efficient. Could such a vocabulary work for rust as
-well? to avoid extranous distractions, I decided to follow in their
-footsteps, and essentially transcribed their implementation.
+well? I decided to follow in their footsteps, and essentially
+transcribed their design to Rust using
+[ndarray](https://github.com/rust-ndarray/ndarray).
 
 My implementation ended up looking like this:
 
@@ -33,20 +38,21 @@ My implementation ended up looking like this:
 
 which is quite similar to their Julia version (itself very similar to
 the wikipedia rendition), except for being more explicit about memory
-usage. Oh, and except for the bug.
+usage. Oh, and except for the bug. But to start with, all seemed well.
 
-To start, all seemed well. Following IMDR, we define a struct
-`CGIterable` whose fields hold almost all intermediate state of the
-algorithm. A function takes a problem (in this case, \\(A,b\\)) and
-returns a CGIterable, for which we implement the StreamingIterator
-trait. This trait is simple, and requires us to implement two methods:
+Following IMDR, we define a struct `CGIterable` whose fields hold
+almost all intermediate state of the algorithm. A function takes a
+problem (in this case, \\(A,b\\)) and returns a CGIterable, for which
+we implement the StreamingIterator trait. 
+
+This trait is simple, and requires us to implement two methods:
 `advance` (apply the code above to run an iteration of the algorithm)
 and `get` (borrowing `self`, return `Some(self)`). `get` returning the
 struct by reference is the main motivation to use StreamingIterator
 over the ubiquitous Iterator trait; it leaves any copying up to the
 implementor.
 
-The signatures for implementing a method is as follows:
+The signatures for implementing an iterative method in this style are as follows:
 ```rust
 /// The state of a conjugate gradient algorithm.
 #[derive(Clone)]
@@ -116,3 +122,7 @@ and solve each problem once? and where is that bug? how does one even
 catch bugs in code that doesn't ever really finish?
 
 All those and more, next time.
+
+----
+
+Thanks to Daniel Fox, a collaborator on this project.
