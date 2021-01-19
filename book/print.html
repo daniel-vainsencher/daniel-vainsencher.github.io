@@ -1,0 +1,360 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Daniel Vainsencher</title>
+        
+        <meta name="robots" content="noindex" />
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="conjugate_gradient_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">Daniel Vainsencher</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#a-story-about-conjugate-gradient-in-rust" id="a-story-about-conjugate-gradient-in-rust">A story about conjugate gradient in rust</a></h1>
+<p>Conjugate gradients (CG) is an iterative method for solving \(Ax =
+b\). It is limited to the case where the matrix \(A\) is positive
+semi definite (essentially, only scales vectors differently in
+different directions). By iterative method we mean a simple way to
+improve a solution, which we apply repeatedly starting from some
+initial value.</p>
+<p>This is the kind of numerical algorithm that Julia excels at, and XXX
+some guy link XXX used it to demonstrate how Julia iterables are
+wonderful way to express iterative algorithms, and also &quot;utilities&quot;
+useful across algorithms, like timing, skipping, stopping conditions
+etc.</p>
+<p>I like Rust quite a bit, it abstracts loops via iterators and custom
+abstractions are efficient. Could such a vocabulary work for rust as
+well? to avoid extranous distractions, I decided to follow in their
+footsteps, and essentially transcribed their implementation.</p>
+<p>My implementation ended up looking like this:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>        let ap = self.a.dot(&amp;self.p).into_shared();
+        let alpha = self.rs / self.p.dot(&amp;ap);
+        self.x += &amp;(alpha * &amp;self.p);
+        self.r -= &amp;(alpha * &amp;ap);
+        self.rsprev = self.rs;
+        self.rs = self.r.dot(&amp;self.r);
+        self.p = (&amp;self.r + &amp;(&amp;self.rs / self.rsprev * &amp;self.p)).into_shared();
+        self.ap = Some(ap);
+<span class="boring">}
+</span></code></pre></pre>
+<p>which is quite similar to their Julia version (itself very similar to
+the wikipedia rendition), except for being more explicit about memory
+usage. Oh, and except for the bug.</p>
+<p>To start, all seemed well. Following IMDR, we define a struct
+<code>CGIterable</code> whose fields hold almost all intermediate state of the
+algorithm. A function takes a problem (in this case, \(A,b\)) and
+returns a CGIterable, for which we implement the StreamingIterator
+trait. This trait is simple, and requires us to implement two methods:
+<code>advance</code> (apply the code above to run an iteration of the algorithm)
+and <code>get</code> (borrowing <code>self</code>, return <code>Some(self)</code>). <code>get</code> returning the
+struct by reference is the main motivation to use StreamingIterator
+over the ubiquitous Iterator trait; it leaves any copying up to the
+implementor.</p>
+<p>The signatures for implementing a method is as follows:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// The state of a conjugate gradient algorithm.
+#[derive(Clone)]
+struct CGIterable {
+    // contents
+}
+
+impl CGIterable {
+    /// Convert a LinearSystem problem into a StreamingIterator of conjugate gradient solutions.
+    pub fn conjugate_gradient(problem: LinearSystem) -&gt; CGIterable {
+	    // we chose to consume the LinearSystem, but it can probably be borrowed instead
+    }
+}
+
+impl StreamingIterator for CGIterable {
+    type Item = CGIterable;
+    /// Implementation of conjugate gradient iteration
+    fn advance(&amp;mut self) {
+	    // the code from before
+    }
+    fn get(&amp;self) -&gt; Option&lt;&amp;Self::Item&gt; {
+	    // We will eventually change this, but for now:
+        Some(self)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>To use it, we initialize the iterator and soon start reading values:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let p = make_3x3_psd_system_2();
+let cg_iter = CGIterable::conjugate_gradient(p);
+while let Some(_cgi) = cg_print_iter.next() {
+	let res = result.a.dot(&amp;result.x) - &amp;result.b;
+	let res_norm = res.dot(&amp;res);
+    println!(
+        &quot;||Ax - b ||_2 = {:.5}, for x = {:.4}, and Ax - b = {:.5}&quot;,
+        res_norm,
+		result.x,
+		result.a.dot(&amp;result.x) - &amp;result.b,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Indeed the output shows nice convergence, with the discrepancy \(Ax -
+b\) tending quickly to zero:</p>
+<pre><code>||Ax - b ||_2 = 1.00000, for x = [0.0000, 1.0000, 0.0000], and Ax - b = [0.50000, 0.00000, 0.50000]
+||Ax - b ||_2 = 0.06250, for x = [-0.6250, 1.3125, -0.6250], and Ax - b = [0.03125, 0.00000, 0.03125]
+||Ax - b ||_2 = 0.00391, for x = [-0.6641, 1.3320, -0.6641], and Ax - b = [0.00195, 0.00000, 0.00195]
+||Ax - b ||_2 = 0.00024, for x = [-0.6665, 1.3333, -0.6665], and Ax - b = [0.00012, 0.00000, 0.00012]
+||Ax - b ||_2 = 0.00002, for x = [-0.6667, 1.3333, -0.6667], and Ax - b = [0.00001, 0.00000, 0.00001]
+</code></pre>
+<p>Ok, while we have nicely abstracted the algorithm itself to the call
+to <code>conjugate_gradient</code>, our loop now contains quite a bit of code to
+merely report progress. It is also an infinite loop; a stopping
+condition would be additional code, and other common niceties include:</p>
+<ul>
+<li>looking at only every Nth iteration,</li>
+<li>time the cost of an iteration (but not auxiliary I/O!), </li>
+<li>plot progress,</li>
+<li>save progress, etc. </li>
+</ul>
+<p>Can we abstract all these so that we can reuse them for other methods
+and solve each problem once? and where is that bug? how does one even
+catch bugs in code that doesn't ever really finish?</p>
+<p>All those and more, next time.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            var socket = new WebSocket("ws://localhost:3000/__livereload");
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+        
+        <script type="text/javascript">
+        window.addEventListener('load', function() {
+            MathJax.Hub.Register.StartupHook('End', function() {
+                window.setTimeout(window.print, 100);
+            });
+        });
+        </script>
+        
+        
+
+    </body>
+</html>
