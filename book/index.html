@@ -98,7 +98,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="conjugate_gradient_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li><li class="chapter-item expanded affix "><a href="about.html">About</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="iterative_methods_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li><li class="chapter-item expanded affix "><a href="about.html">About</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -166,20 +166,30 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#a-story-about-conjugate-gradient-in-rust" id="a-story-about-conjugate-gradient-in-rust">A story about conjugate gradient in Rust</a></h1>
+                        <h1><a class="header" href="#iterative-methods-in-rust-conjugate-gradient" id="iterative-methods-in-rust-conjugate-gradient">Iterative methods in Rust: conjugate gradient</a></h1>
+<h2><a class="header" href="#introduction" id="introduction">Introduction</a></h2>
 <p><a href="https://en.wikipedia.org/wiki/Conjugate_gradient_method">Conjugate
 gradients</a>
 (CG) is an iterative method for solving \(Ax = b\). It is limited to
-the case where the matrix \(A\) is positive semi definite
-(essentially, \(A\) only scales \(x\)s differently in different
-directions, no rotation etc). By <a href="https://en.wikipedia.org/wiki/Iterative_method">iterative
+the case where the matrix \(A\) is <em>positive definite</em><sup class="footnote-reference"><a href="#PD">1</a></sup> which
+occurs often, for example, in
+<a href="https://en.wikipedia.org/wiki/Finite_element_method">FEM</a> simulators
+of physics on complex shapes. By <a href="https://en.wikipedia.org/wiki/Iterative_method">iterative
 method</a> we mean a
-simple recipe to improve a solution, which we apply repeatedly
-starting from some initial value.</p>
+simple recipe to improve an approximate solution, which we apply
+repeatedly starting from some initial value. While iterative methods
+are not the bread and butter of CS courses or interview questions, in
+many domains they are so much more scalable than alternatives they are
+essentially the only game in town. From deep learning to PageRank,
+iterative methods power many magical-seeming uses of computers. This
+series is a tour behind the curtain; today's post introduces their
+implemention and some software engineering considerations, using CG as
+our example.</p>
 <p>Implementing an iterative method often starts as a for loop around the
 recipe, but that loop body accumulates cruft like you wouldn't believe
-(is it working? just print progress...). I'd gotten used to writing
-these and dreaming about better design when I read a beautiful
+(hmm, is it working? let's print an indication of progress...). I'd
+gotten used to writing these over and over and dreaming about better
+design when I read a beautiful
 <a href="https://lostella.github.io/2018/07/25/iterative-methods-done-right.html">post</a>
 by Lorenzo Stella. Titled &quot;Iterative Methods Done Right&quot; (IMDR), it
 proposes to use a Julia iterable to abstract each iterative algorithm,
@@ -190,7 +200,13 @@ it go? Rust abstracts loops via iterators and custom abstractions are
 idiomatic, its worth a try. I decided to follow in their footsteps,
 and essentially transcribed their design to Rust using
 <a href="https://github.com/rust-ndarray/ndarray">ndarray</a>.</p>
-<p>My implementation ended up looking like this:</p>
+<div class="footnote-definition" id="PD"><sup class="footnote-definition-label">1</sup>
+<p>Positive Definite matrices</p>
+</div>
+<p>A positive definite matrix \(A\) only scales \(x\)s
+differently in different directions; no rotation or flipping allowed.</p>
+<h2><a class="header" href="#implementation-and-a-general-interface" id="implementation-and-a-general-interface">Implementation and a general interface</a></h2>
+<p>My (almost) first implementation ended up looking like this:</p>
 <pre><pre class="playground"><code class="language-rust">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -200,13 +216,13 @@ and essentially transcribed their design to Rust using
         self.r -= &amp;(alpha * &amp;ap);
         self.rsprev = self.rs;
         self.rs = self.r.dot(&amp;self.r);
-        self.p = (&amp;self.r + &amp;(&amp;self.r / self.rsprev * &amp;self.p)).into_shared();
+        self.p = (&amp;self.r + &amp;(&amp;self.rs / self.rsprev * &amp;self.p)).into_shared();
         self.ap = Some(ap);
 <span class="boring">}
 </span></code></pre></pre>
 <p>which is quite similar to their Julia version (itself very similar to
 the wikipedia rendition), except for being more explicit about memory
-usage. Oh, and except for the bug. But to start with, all seemed well.</p>
+usage. </p>
 <p>Following IMDR, we define a struct <code>CGIterable</code> whose fields hold
 almost all intermediate state of the algorithm. A function takes a
 problem (in this case, \((A,b)\)) and returns a CGIterable, for which
@@ -249,45 +265,64 @@ impl StreamingIterator for CGIterable {
 }
 <span class="boring">}
 </span></code></pre></pre>
-<p>To use it, we initialize the iterator and soon start reading values:</p>
+<h2><a class="header" href="#running-an-iterative-method" id="running-an-iterative-method">Running an iterative method</a></h2>
+<p>How do we call such an implementation?</p>
 <pre><pre class="playground"><code class="language-rust">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let p = make_3x3_psd_system_2();
+</span>// First we generate a problem, which consists of the pair (A,b).
+let p = make_3x3_psd_system_2();
+
+// Next convert it into an iterator
 let cg_iter = CGIterable::conjugate_gradient(p);
-while let Some(_cgi) = cg_print_iter.next() {
+
+// and loop over intermediate solutions.
+// Note `next` is provided by the StreamingIterator trait using
+// `advance` then `get`.
+while let Some(result) = cg_print_iter.next() {
+	// We want to find x such that a.dot(x) = b
+	// then the difference between the two sides (called the residual),
+	// is a good measure of the error in a solution.
 	let res = result.a.dot(&amp;result.x) - &amp;result.b;
-	let res_norm = res.dot(&amp;res);
+	
+	// The (squared) length of the residual is a number summarizing
+	// how bad a solution is. When working on iterative methods,
+	// we want to see these number decrease quickly.
+	let res_squared_length = res.dot(&amp;res);
+	
     println!(
-        &quot;||Ax - b||_2 = {:.5}, for x = {:.4}, and Ax - b = {:.5}&quot;,
-        res_norm,
+        &quot;||Ax - b||_2 = {:.5}, for x = {:.4}&quot;,
+        res_squared_length,
 		result.x,
-		result.a.dot(&amp;result.x) - &amp;result.b,
 }
 <span class="boring">}
 </span></code></pre></pre>
-<p>Indeed the output shows nice convergence, with the discrepancy \(Ax -
+<p>Indeed the output shows nice convergence, with the residual \(Ax -
 b\) tending quickly to zero:</p>
-<pre><code>||Ax - b||_2 = 1.00000, for x = [0.0000, 1.0000, 0.0000], and Ax - b = [0.50000, 0.00000, 0.50000]
-||Ax - b||_2 = 0.06250, for x = [-0.6250, 1.3125, -0.6250], and Ax - b = [0.03125, 0.00000, 0.03125]
-||Ax - b||_2 = 0.00391, for x = [-0.6641, 1.3320, -0.6641], and Ax - b = [0.00195, 0.00000, 0.00195]
-||Ax - b||_2 = 0.00024, for x = [-0.6665, 1.3333, -0.6665], and Ax - b = [0.00012, 0.00000, 0.00012]
-||Ax - b||_2 = 0.00002, for x = [-0.6667, 1.3333, -0.6667], and Ax - b = [0.00001, 0.00000, 0.00001]
+<pre><code>||Ax - b||_2 = 1.00000, for x = [0.0000, 1.0000, 0.0000]
+||Ax - b||_2 = 0.06250, for x = [-0.6250, 1.3125, -0.6250]
+||Ax - b||_2 = 0.00391, for x = [-0.6641, 1.3320, -0.6641]
+||Ax - b||_2 = 0.00024, for x = [-0.6665, 1.3333, -0.6665]
+||Ax - b||_2 = 0.00002, for x = [-0.6667, 1.3333, -0.6667]
 </code></pre>
-<p>We've nicely taken the algorithm out of the loop, but that is still
-dominated by the progress report, and the loop is infinite, so we
-still owe a stopping condition if we want the program to stop on its
-own. Once we start looking for these niceties, soon we'll want to:</p>
+<p>In terms of the code, notice we've nicely taken the algorithm out of
+the loop, but the loop body is now dominated by the progress
+report. Also the loop is currently infinite, so we still owe some
+stopping logic if we want it to stop on its own. Once we start looking
+for these niceties, soon we'll want to:</p>
 <ul>
 <li>look at only every Nth iteration,</li>
 <li>time the cost of an iteration (but not auxiliary I/O!), </li>
-<li>plot progress,</li>
-<li>save progress...</li>
+<li>plot progress over time,</li>
+<li>save progress so we can restart if electricity failed...</li>
 </ul>
-<p>and we certainly don't want all of those tangled in our loop. We want
-to be able to mix and match those, reusing them across iterative
-methods! How will that work? and where is that bug? how does one even
-assure the quality of code that doesn't really want to stop?</p>
+<p>and we certainly don't want all of those tangled in our loop. Such
+functionality will be useful next time we write an iterative methods,
+we'll want to reuse them! IMDR proposes a nice solution, which we will
+demonstrate in Rust in the next post. Beyond code reuse, benchmarking
+and testing are very important for iterative methods. How does one
+test the properties of code that doesn't really want to stop, and for
+which solutions only approach correctness?</p>
 <p>We'll get into those questions and more over the next few posts.</p>
 <hr />
 <p>Thanks to Daniel Fox, a collaborator on this project.</p>
@@ -324,7 +359,7 @@ assure the quality of code that doesn't really want to stop?</p>
         
         <!-- Livereload script (if served using the cli tool) -->
         <script type="text/javascript">
-            var socket = new WebSocket("ws://localhost:3000/__livereload");
+            var socket = new WebSocket("ws://localhost:3031/__livereload");
             socket.onmessage = function (event) {
                 if (event.data === "reload") {
                     socket.close();

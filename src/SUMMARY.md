@@ -1,6 +1,6 @@
 # Summary
 
 
-- [A rusty conjugate gradient](./conjugate_gradient_part_1.md)
+- [A rusty conjugate gradient](./iterative_methods_part_1.md)
 
 [About](./about.md) 
