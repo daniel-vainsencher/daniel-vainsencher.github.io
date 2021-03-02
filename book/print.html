@@ -100,7 +100,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="iterative_methods_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li><li class="chapter-item expanded affix "><a href="about.html">About</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="iterative_methods_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li><li class="chapter-item expanded "><a href="iterative_methods_part_2.html"><strong aria-hidden="true">2.</strong> Reusable utitilities for iterative methods</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -170,72 +170,61 @@
                     <main>
                         <h1><a class="header" href="#iterative-methods-in-rust-conjugate-gradient" id="iterative-methods-in-rust-conjugate-gradient">Iterative methods in Rust: conjugate gradient</a></h1>
 <h2><a class="header" href="#introduction" id="introduction">Introduction</a></h2>
-<p><a href="https://en.wikipedia.org/wiki/Conjugate_gradient_method">Conjugate
-gradients</a>
-(CG) is an iterative method for solving \(Ax = b\). It is limited to
-the case where the matrix \(A\) is <em>positive definite</em><sup class="footnote-reference"><a href="#PD">1</a></sup> which
-occurs often, for example, in
-<a href="https://en.wikipedia.org/wiki/Finite_element_method">FEM</a> simulators
-of physics on complex shapes. By <a href="https://en.wikipedia.org/wiki/Iterative_method">iterative
+<p>From deep learning to PageRank, iterative methods power many
+magical-seeming uses of computers. By <a href="https://en.wikipedia.org/wiki/Iterative_method">iterative
 method</a> we mean a
 simple recipe to improve an approximate solution, which we apply
 repeatedly starting from some initial value. While iterative methods
 are not the bread and butter of CS courses or interview questions, in
 many domains they are so much more scalable than alternatives they are
-essentially the only game in town. From deep learning to PageRank,
-iterative methods power many magical-seeming uses of computers. This
-series is a tour behind the curtain; today's post introduces their
-implemention and some software engineering considerations, using CG as
-our example.</p>
+essentially the only game in town. This series is a tour behind the
+curtain; this post introduces their implemention and some software
+engineering considerations, using <a href="https://en.wikipedia.org/wiki/Conjugate_gradient_method">Conjugate
+gradient</a>
+(CG) method as our example.</p>
+<p>What is CG for? to simulate physics (say, spread of heat) over a
+complex shape, we break it up into a finite number of simple elements
+in the Finite Element Method
+(<a href="https://en.wikipedia.org/wiki/Finite_element_method">FEM</a>). The
+implied relations between temperatures at different elements are
+encoded into matrix $A$ that is positive definite (PD)<sup class="footnote-reference"><a href="#PD">1</a></sup> and a vector
+$b$, and to find the vector of temperatures $x$, it is enough to solve the
+matrix equation \(Ax = b\), which CG can do well for PD matrices.</p>
 <p>Implementing an iterative method often starts as a for loop around the
 recipe, but that loop body accumulates cruft like you wouldn't believe
-(hmm, is it working? let's print an indication of progress...). I'd
+(<em>hmm, is it working? let's print an indication of progress...</em>). I'd
 gotten used to writing these over and over and dreaming about better
 design when I read a beautiful
 <a href="https://lostella.github.io/2018/07/25/iterative-methods-done-right.html">post</a>
-by Lorenzo Stella. Titled &quot;Iterative Methods Done Right&quot; (IMDR), it
-proposes to use a Julia iterable to abstract each iterative algorithm,
-and also a reusable &quot;utility&quot; for each of those pesky recurring
-worries I mentioned.</p>
+&quot;Iterative Methods Done Right&quot; (IMDR) by Lorenzo Stella. It proposes
+to use a Julia iterable to abstract each iterative algorithm, and also
+a reusable &quot;utility&quot; for each of those pesky recurring worries I
+mentioned.</p>
 <p>Could such a reusable vocabulary work for Rust as well? How far could
-it go? Rust abstracts loops via iterators and custom abstractions are
-idiomatic, its worth a try. I decided to follow in their footsteps,
-and essentially transcribed their design to Rust using
-<a href="https://github.com/rust-ndarray/ndarray">ndarray</a>.</p>
+it go? Rust supports famously the creation of tight and efficient
+abstractions that are difficult to misuse, and in particular supports
+encoding loops into iterators, so it seemed worth a try. I decided to
+follow in their footsteps, and essentially transcribed their design to
+Rust, using <a href="https://github.com/rust-ndarray/ndarray">ndarray</a> for the
+numerical calculations. This is serving as the basis for a new library
+for implementing and working with iterative methods. Our goal in this
+post: to show how this design keeps the method itself nicely separated
+from how it might be used.</p>
 <div class="footnote-definition" id="PD"><sup class="footnote-definition-label">1</sup>
 <p>Positive Definite matrices</p>
 </div>
-<p>A positive definite matrix \(A\) only scales \(x\)s
+<p>A positive definite matrix \(A\) only scales \(x\)'s
 differently in different directions; no rotation or flipping allowed.</p>
 <h2><a class="header" href="#implementation-and-a-general-interface" id="implementation-and-a-general-interface">Implementation and a general interface</a></h2>
-<p>My (almost) first implementation ended up looking like this:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>        let ap = self.a.dot(&amp;self.p).into_shared();
-        let alpha = self.rs / self.p.dot(&amp;ap);
-        self.x += &amp;(alpha * &amp;self.p);
-        self.r -= &amp;(alpha * &amp;ap);
-        self.rsprev = self.rs;
-        self.rs = self.r.dot(&amp;self.r);
-        self.p = (&amp;self.r + &amp;(&amp;self.rs / self.rsprev * &amp;self.p)).into_shared();
-        self.ap = Some(ap);
-<span class="boring">}
-</span></code></pre></pre>
-<p>which is quite similar to their Julia version (itself very similar to
-the wikipedia rendition), except for being more explicit about memory
-usage. </p>
-<p>Following IMDR, we define a struct <code>CGIterable</code> whose fields hold
-almost all intermediate state of the algorithm. A function takes a
-problem (in this case, \((A,b)\)) and returns a CGIterable, for which
-we implement the StreamingIterator trait. </p>
-<p>This trait is simple, and requires us to implement two methods:</p>
+<p>To store the state our method maintains we define a struct
+<code>CGIterable</code>, for which we implement the StreamingIterator trait. This
+trait is simple, and requires us to implement two methods:</p>
 <ul>
 <li><code>advance</code> applies one iteration of the algorithm via the code above</li>
 <li><code>get</code> borrows <code>self</code> and return <code>Some(self)</code>. </li>
 </ul>
-<p><code>get</code> returning the struct by reference is the main motivation to use
-StreamingIterator over the ubiquitous Iterator trait; it leaves
+<p>The benefit of the StreamingIterator trait over the ubiquitous
+Iterator is <code>get</code> returning the struct by reference; this leaves
 decisions to copy state up to the implementor.</p>
 <p>The signatures for implementing an iterative method in this style are as follows:</p>
 <pre><pre class="playground"><code class="language-rust">
@@ -267,13 +256,62 @@ impl StreamingIterator for CGIterable {
 }
 <span class="boring">}
 </span></code></pre></pre>
+<p>Note a few design decisions in the above:</p>
+<ul>
+<li>Problem representation  (here, LinearSystem) is distinct from that
+of solution methods, of which there might be many.</li>
+<li>The constructor method <code>conjugate_gradient</code> is responsible to set up
+the initial state for the first iteration, and so is part of the
+method definition. </li>
+<li>Another constructor responsibility is to perform checks of the input
+problem that are applicable and cheap: expensive initialization is a
+bad fit for an iterative method.</li>
+<li>We could set the <code>Item</code> type returned by the <code>get</code> method be only a
+result field, thus hiding implementation details from
+downstream. Perhaps unintuitively, this is a bad idea; minimal
+abstractions with stable interfaces can be provided separately.</li>
+<li>The same tradeoff exists in the set of fields defined in the struct,
+as the following true story illustrates.</li>
+</ul>
+<p>My (almost) first implementation ended up looking like this<sup class="footnote-reference"><a href="#CG">2</a></sup>:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>        let ap = self.a.dot(&amp;self.p).into_shared();
+        let alpha = self.rs / self.p.dot(&amp;ap);
+        self.x += &amp;(alpha * &amp;self.p);
+        self.r -= &amp;(alpha * &amp;ap);
+        self.rsprev = self.rs;
+        self.rs = self.r.dot(&amp;self.r);
+        self.p = (&amp;self.r + &amp;(&amp;self.rs / self.rsprev * &amp;self.p)).into_shared();
+        self.ap = Some(ap);
+<span class="boring">}
+</span></code></pre></pre>
+<p>Having <code>ap</code> and <code>alpha</code> be temporaries and not fields of <code>CGIterable</code>
+seemed like saving memory and hiding unnecessary detail, laudable
+goals in principle. Soon after implementing this code I found myself
+wanting to print them, which is impossible without modifying the
+<code>advance</code> method!</p>
+<p>Iterative methods are often highly sensitive beasts, with innocuous
+seeming modifications causing sometimes subtle numerical and/or
+dynamic effects that are very difficult to trade and resolve. Thus
+avoiding modifications to the method implementation even when
+attempting to study/debug it is a primary goal of this design. This is
+served by storing more intermediate state in the iterable, and by
+exposing all of it via <code>get</code>.</p>
+<div class="footnote-definition" id="CG"><sup class="footnote-definition-label">2</sup>
+<p>Conjugate gradient algorithm</p>
+</div>
+<p>The implementation is very similar to the better explained Wikipedia
+<a href="https://en.wikipedia.org/wiki/Conjugate_gradient_method#The_resulting_algorithm">exposition</a>.</p>
 <h2><a class="header" href="#running-an-iterative-method" id="running-an-iterative-method">Running an iterative method</a></h2>
-<p>How do we call such an implementation?</p>
+<p>How do we call such an implementation? the example below illustrates a
+common workflow:</p>
 <pre><pre class="playground"><code class="language-rust">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// First we generate a problem, which consists of the pair (A,b).
-let p = make_3x3_psd_system_2();
+let p = make_3x3_pd_system();
 
 // Next convert it into an iterator
 let cg_iter = CGIterable::conjugate_gradient(p);
@@ -287,13 +325,15 @@ while let Some(result) = cg_print_iter.next() {
 	// is a good measure of the error in a solution.
 	let res = result.a.dot(&amp;result.x) - &amp;result.b;
 	
-	// The (squared) length of the residual is a number summarizing
-	// how bad a solution is. When working on iterative methods,
-	// we want to see these number decrease quickly.
+	// The (squared) length of the residual is a cost, a number 
+	// summarizing how bad a solution is. When working on iterative 
+	// methods, we want to see these number decrease quickly.
 	let res_squared_length = res.dot(&amp;res);
 	
+	// || ... ||_2^2 is notation for squared euclidean length of what 
+	// lies between the vertical lines.
     println!(
-        &quot;||Ax - b||_2 = {:.5}, for x = {:.4}&quot;,
+        &quot;||Ax - b||_2^2 = {:.5}, for x = {:.4}&quot;,
         res_squared_length,
 		result.x,
 }
@@ -307,30 +347,96 @@ b\) tending quickly to zero:</p>
 ||Ax - b||_2 = 0.00024, for x = [-0.6665, 1.3333, -0.6665]
 ||Ax - b||_2 = 0.00002, for x = [-0.6667, 1.3333, -0.6667]
 </code></pre>
-<p>In terms of the code, notice we've nicely taken the algorithm out of
-the loop, but the loop body is now dominated by the progress
-report. Also the loop is currently infinite, so we still owe some
-stopping logic if we want it to stop on its own. Once we start looking
-for these niceties, soon we'll want to:</p>
+<p>In terms of the code, notice the algorithm is taken out of the loop,
+and so remains unsullied by such lowly practicalities as the progress
+report dominating the loop body. Also the loop is currently infinite,
+until we add stopping logic it won't stop on its own. Once we start
+looking for such niceties, soon we'll want to:</p>
 <ul>
 <li>look at only every Nth iteration,</li>
 <li>time the cost of an iteration (but not auxiliary I/O!), </li>
 <li>plot progress over time,</li>
-<li>save progress so we can restart if electricity failed...</li>
+<li>save progress so we don't lose progress if electricity fails...</li>
 </ul>
 <p>and we certainly don't want all of those tangled in our loop. Such
 functionality will be useful next time we write an iterative methods,
-we'll want to reuse them! IMDR proposes a nice solution, which we will
-demonstrate in Rust in the next post. Beyond code reuse, benchmarking
-and testing are very important for iterative methods. How does one
-test the properties of code that doesn't really want to stop, and for
-which solutions only approach correctness?</p>
+we'll want to reuse them! luckily, the idea of representing processes
+with streaming iterator applies similarly to abstract those as well in
+a way that is clean and orthogonal. We will demonstrate it in the next
+post. Beyond design for code reuse, benchmarking and testing are two
+additional core concerns, that look a little different for iterative
+methods. How does one test the properties of code that doesn't really
+want to stop, and for which solutions only approach correctness?</p>
 <p>We'll get into those questions and more over the next few posts.</p>
 <hr />
-<p>Thanks to Daniel Fox, a collaborator on this project.</p>
-<h1><a class="header" href="#about" id="about">About</a></h1>
-<p>I do applied research using ML, optimization and software engineering.</p>
-<p>Daniel Vainsencher</p>
+<p>Thanks to Daniel Fox, a collaborator on this project, and Yevgenia
+Vainsencher for feedback on early versions of this post.</p>
+<h1><a class="header" href="#reusable-utilities-for-iterative-methods" id="reusable-utilities-for-iterative-methods">Reusable utilities for iterative methods</a></h1>
+<p>In our previous <a href="iterative_methods_part_1.html">post</a>, we introduced
+iterative methods, implemented one (conjugate gradient) in Rust as a
+StreamingIterator, and saw the cost of its solutions decrease towards
+zero. The StreamingIterator interface allowed us to <a href="https://en.wikipedia.org/wiki/Separation_of_concerns">separate the
+concern</a> of
+implementing the method from those how it will be used. Today we will
+dive deeper into the latter aspect of how iterative method
+implementations are used, and in particular some common concerns that
+can also be abstracted and reused.</p>
+<p>That we bother to call some code an &quot;algorithm&quot; or &quot;method&quot; is usually
+an indication that it is complex enough to deserve testing. This also
+implies that it should be well abstracted, because it will have at
+least two callers: the client(s) motivating its implementation, and a
+test/benchmark that shows it returns a correct answer in the expected
+time. What do these look like for iterative methods? the use of an
+iterative method evolves in a specific sequence as it matures. We will
+look at its lifecycle first, and implementation after.</p>
+<h2><a class="header" href="#life-cycle-of-an-iterative-method" id="life-cycle-of-an-iterative-method">Life cycle of an iterative method</a></h2>
+<h3><a class="header" href="#implementation" id="implementation">Implementation</a></h3>
+<p>When we are initially implementing a method (most commonly,
+decyphering and transcribing pseudocode from wikipedia or a paper),
+the minimum sanity check we want to do is apply it to a simple problem
+where we can tell whether it is making progress. Thus we will want to
+print, for every iteration, the current solution (the problem is very
+simple, so we can read it all) and its associated cost (the number
+that should decrease).</p>
+<p>An output like we saw last time:</p>
+<pre><code>||Ax - b||_2 = 1.00000, for x = [0.0000, 1.0000, 0.0000]
+||Ax - b||_2 = 0.06250, for x = [-0.6250, 1.3125, -0.6250]
+||Ax - b||_2 = 0.00391, for x = [-0.6641, 1.3320, -0.6641]
+||Ax - b||_2 = 0.00024, for x = [-0.6665, 1.3333, -0.6665]
+||Ax - b||_2 = 0.00002, for x = [-0.6667, 1.3333, -0.6667] 
+</code></pre>
+<p>is enough for us to see progress. Lack of progress is often cause by
+one of three common culprits (from obvious to less):</p>
+<ul>
+<li>we implemented the improvement step incorrectly,</li>
+<li>to make progress the iterative method relies one some conditions
+about the problem, which the chosen example does not fulfill. </li>
+<li>we measure the cost incorrectly,</li>
+</ul>
+<p>while working to figure it out, we might print at every iteration also
+the value of every field in the struct, and validate each calculation
+independently. </p>
+<p>Many iterative methods are very simple, straight line code with no
+conditions, just a sequence of calculations. As such, the most common
+failure mode in my experience is transcription bugs, such as
+forgetting a <code>-</code> sign. These usually cause catastrophic failure to
+progress, and are thus easy to detect. A handy trick is to keep your
+implementation very close to the reference (order of operations,
+variable names etc), then after transcribing compare them slowly and
+carefully. This often suffices to find these errors.</p>
+<h3><a class="header" href="#validation" id="validation">Validation</a></h3>
+<p>Most iterative methods come with some theory that quantifies
+progress. An example would be: $f(x_t) \le h(p)*f(x_0)/t$ where $f$ is
+a cost function, $x_0$ is the initial solution, and $h$ is a function
+of problem parameters such as dimension, condition number, smoothness,
+etc. At a minimum validation should ensure that on a few non-trivial
+problems fulfilling the methods assumptions, cost decreases over
+iterations at a rate matching available theory. , but the
+minimum above</p>
+<p>A lot more can be done to validate iterative methods, and we will come
+back to this in future posts.</p>
+<h3><a class="header" href="#experimentation" id="experimentation">Experimentation</a></h3>
+<h3><a class="header" href="#use" id="use">Use</a></h3>
 
                     </main>
 
