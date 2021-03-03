@@ -187,9 +187,10 @@ complex shape, we break it up into a finite number of simple elements
 in the Finite Element Method
 (<a href="https://en.wikipedia.org/wiki/Finite_element_method">FEM</a>). The
 implied relations between temperatures at different elements are
-encoded into matrix $A$ that is positive definite (PD)<sup class="footnote-reference"><a href="#PD">1</a></sup> and a vector
-$b$, and to find the vector of temperatures $x$, it is enough to solve the
-matrix equation \(Ax = b\), which CG can do well for PD matrices.</p>
+encoded into matrix \(A\) that is positive definite (PD)<sup class="footnote-reference"><a href="#PD">1</a></sup> and a
+vector \(b\), and to find the vector of temperatures \(x\), it is
+enough to solve the matrix equation \(Ax = b\), which CG can do well
+for PD matrices.</p>
 <p>Implementing an iterative method often starts as a for loop around the
 recipe, but that loop body accumulates cruft like you wouldn't believe
 (<em>hmm, is it working? let's print an indication of progress...</em>). I'd

@@ -20,9 +20,10 @@ complex shape, we break it up into a finite number of simple elements
 in the Finite Element Method
 ([FEM](https://en.wikipedia.org/wiki/Finite_element_method)). The
 implied relations between temperatures at different elements are
-encoded into matrix $A$ that is positive definite (PD)[^PD] and a vector
-$b$, and to find the vector of temperatures $x$, it is enough to solve the
-matrix equation \\(Ax = b\\), which CG can do well for PD matrices.
+encoded into matrix \\(A\\) that is positive definite (PD)[^PD] and a
+vector \\(b\\), and to find the vector of temperatures \\(x\\), it is
+enough to solve the matrix equation \\(Ax = b\\), which CG can do well
+for PD matrices.
 
 Implementing an iterative method often starts as a for loop around the
 recipe, but that loop body accumulates cruft like you wouldn't believe
