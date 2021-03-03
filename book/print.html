@@ -100,7 +100,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="iterative_methods_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li><li class="chapter-item expanded "><a href="iterative_methods_part_2.html"><strong aria-hidden="true">2.</strong> Reusable utitilities for iterative methods</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="iterative_methods_part_1.html"><strong aria-hidden="true">1.</strong> A rusty conjugate gradient</a></li><li class="chapter-item expanded "><a href="iterative_methods_part_2.html"><strong aria-hidden="true">2.</strong> Reusable utilities for iterative methods</a></li><li class="chapter-item expanded affix "><a href="about.html">About</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -178,7 +178,7 @@ repeatedly starting from some initial value. While iterative methods
 are not the bread and butter of CS courses or interview questions, in
 many domains they are so much more scalable than alternatives they are
 essentially the only game in town. This series is a tour behind the
-curtain; this post introduces their implemention and some software
+curtain; this post introduces their implementation and some software
 engineering considerations, using <a href="https://en.wikipedia.org/wiki/Conjugate_gradient_method">Conjugate
 gradient</a>
 (CG) method as our example.</p>
@@ -201,15 +201,20 @@ to use a Julia iterable to abstract each iterative algorithm, and also
 a reusable &quot;utility&quot; for each of those pesky recurring worries I
 mentioned.</p>
 <p>Could such a reusable vocabulary work for Rust as well? How far could
-it go? Rust supports famously the creation of tight and efficient
-abstractions that are difficult to misuse, and in particular supports
-encoding loops into iterators, so it seemed worth a try. I decided to
-follow in their footsteps, and essentially transcribed their design to
-Rust, using <a href="https://github.com/rust-ndarray/ndarray">ndarray</a> for the
-numerical calculations. This is serving as the basis for a new library
-for implementing and working with iterative methods. Our goal in this
-post: to show how this design keeps the method itself nicely separated
-from how it might be used.</p>
+it go? Rust is designed for the creation of efficient abstractions
+that are difficult to misuse, and particularly supports encoding loops
+into iterators, so it seemed worth a try. I decided to follow in the
+footsteps of IMDR, and essentially transcribed their design to
+Rust. This is serving as the basis for a new library for iterative
+methods. Our goal in this post: to show how this design keeps the
+method itself nicely separated from how it might be used.</p>
+<p>Beyond reuse, there is one more reason to separate methods from
+utilities. Iterative methods are often highly sensitive beasts, with
+innocuous seeming modifications causing sometimes subtle numerical
+and/or dynamic effects that are very difficult to trace and
+resolve. Thus a primary design goal is to minimize the need for
+modifications to the method implementation, even when attempting to
+study/debug it.</p>
 <div class="footnote-definition" id="PD"><sup class="footnote-definition-label">1</sup>
 <p>Positive Definite matrices</p>
 </div>
@@ -220,11 +225,12 @@ differently in different directions; no rotation or flipping allowed.</p>
 <code>CGIterable</code>, for which we implement the StreamingIterator trait. This
 trait is simple, and requires us to implement two methods:</p>
 <ul>
-<li><code>advance</code> applies one iteration of the algorithm via the code above</li>
-<li><code>get</code> borrows <code>self</code> and return <code>Some(self)</code>. </li>
+<li><code>advance</code> applies one iteration of the algorithm, updating state.</li>
+<li><code>get</code> returns a borrow of the <code>Item</code> type, generally some part of
+its state.</li>
 </ul>
 <p>The benefit of the StreamingIterator trait over the ubiquitous
-Iterator is <code>get</code> returning the struct by reference; this leaves
+Iterator is <code>get</code> exposing information by reference; this leaves
 decisions to copy state up to the implementor.</p>
 <p>The signatures for implementing an iterative method in this style are as follows:</p>
 <pre><pre class="playground"><code class="language-rust">
@@ -258,7 +264,7 @@ impl StreamingIterator for CGIterable {
 </span></code></pre></pre>
 <p>Note a few design decisions in the above:</p>
 <ul>
-<li>Problem representation  (here, LinearSystem) is distinct from that
+<li>Problem representation (here, LinearSystem) is distinct from that
 of solution methods, of which there might be many.</li>
 <li>The constructor method <code>conjugate_gradient</code> is responsible to set up
 the initial state for the first iteration, and so is part of the
@@ -266,12 +272,14 @@ method definition. </li>
 <li>Another constructor responsibility is to perform checks of the input
 problem that are applicable and cheap: expensive initialization is a
 bad fit for an iterative method.</li>
-<li>We could set the <code>Item</code> type returned by the <code>get</code> method be only a
-result field, thus hiding implementation details from
-downstream. Perhaps unintuitively, this is a bad idea; minimal
-abstractions with stable interfaces can be provided separately.</li>
-<li>The same tradeoff exists in the set of fields defined in the struct,
-as the following true story illustrates.</li>
+<li><code>Item</code> is set to the whole CGIterable, all algorithm state. We could
+set the <code>Item</code> type returned by the <code>get</code> method be only a result
+field, thus hiding implementation details from
+downstream. Similarly, there is some flexibility in defining the
+iterable struct: beyond a minimal representation of state required
+for the next iteration, should we add fields to store intermediate
+steps of calculations? how about auxiliary information not needed at
+all in the method itself? consider the following experience.</li>
 </ul>
 <p>My (almost) first implementation ended up looking like this<sup class="footnote-reference"><a href="#CG">2</a></sup>:</p>
 <pre><pre class="playground"><code class="language-rust">
@@ -289,20 +297,19 @@ as the following true story illustrates.</li>
 </span></code></pre></pre>
 <p>Having <code>ap</code> and <code>alpha</code> be temporaries and not fields of <code>CGIterable</code>
 seemed like saving memory and hiding unnecessary detail, laudable
-goals in principle. Soon after implementing this code I found myself
-wanting to print them, which is impossible without modifying the
-<code>advance</code> method!</p>
-<p>Iterative methods are often highly sensitive beasts, with innocuous
-seeming modifications causing sometimes subtle numerical and/or
-dynamic effects that are very difficult to trade and resolve. Thus
-avoiding modifications to the method implementation even when
-attempting to study/debug it is a primary goal of this design. This is
-served by storing more intermediate state in the iterable, and by
-exposing all of it via <code>get</code>.</p>
+goals in principle. But soon after implementing this code I found
+myself wanting to print those quantities, which is impossible without
+modifying the <code>advance</code> method! by storing more intermediate state in
+the iterable, exposing all of it via <code>get</code>, and inspecting it
+externally, we avoid modifying the method for our inspection and the
+dreaded <a href="https://en.wikipedia.org/wiki/Heisenbug">Heisenbugs</a>. On top
+of a solid whitebox implementation, we can always build an interface
+that abstracts away some aspects.</p>
 <div class="footnote-definition" id="CG"><sup class="footnote-definition-label">2</sup>
 <p>Conjugate gradient algorithm</p>
 </div>
-<p>The implementation is very similar to the better explained Wikipedia
+<p>The conjugate gradient method itself is beyond the scope of this post,
+but the implementation follows the Wikipedia
 <a href="https://en.wikipedia.org/wiki/Conjugate_gradient_method#The_resulting_algorithm">exposition</a>.</p>
 <h2><a class="header" href="#running-an-iterative-method" id="running-an-iterative-method">Running an iterative method</a></h2>
 <p>How do we call such an implementation? the example below illustrates a
@@ -347,11 +354,11 @@ b\) tending quickly to zero:</p>
 ||Ax - b||_2 = 0.00024, for x = [-0.6665, 1.3333, -0.6665]
 ||Ax - b||_2 = 0.00002, for x = [-0.6667, 1.3333, -0.6667]
 </code></pre>
-<p>In terms of the code, notice the algorithm is taken out of the loop,
-and so remains unsullied by such lowly practicalities as the progress
-report dominating the loop body. Also the loop is currently infinite,
-until we add stopping logic it won't stop on its own. Once we start
-looking for such niceties, soon we'll want to:</p>
+<p>In terms of the code, notice the algorithm is taken out of the loop!
+We do not modify it merely to report progress, not even to decide when
+to stop. In fact the code above does not choose when to stop, we might
+want to add logic for that. Once we start looking for such niceties,
+soon we'll want to:</p>
 <ul>
 <li>look at only every Nth iteration,</li>
 <li>time the cost of an iteration (but not auxiliary I/O!), </li>
@@ -359,17 +366,18 @@ looking for such niceties, soon we'll want to:</p>
 <li>save progress so we don't lose progress if electricity fails...</li>
 </ul>
 <p>and we certainly don't want all of those tangled in our loop. Such
-functionality will be useful next time we write an iterative methods,
+functionalities will be useful next time we write an iterative method,
 we'll want to reuse them! luckily, the idea of representing processes
-with streaming iterator applies similarly to abstract those as well in
-a way that is clean and orthogonal. We will demonstrate it in the next
-post. Beyond design for code reuse, benchmarking and testing are two
-additional core concerns, that look a little different for iterative
+with streaming iterator applies similarly to abstract utilities as
+well in a way that is clean and orthogonal. We will demonstrate this
+in the next post. </p>
+<p>Looking beyond design for code reuse, benchmarking and testing are two
+additional core concerns that look a little different for iterative
 methods. How does one test the properties of code that doesn't really
 want to stop, and for which solutions only approach correctness?</p>
-<p>We'll get into those questions and more over the next few posts.</p>
+<p>We'll get to those questions as well.</p>
 <hr />
-<p>Thanks to Daniel Fox, a collaborator on this project, and Yevgenia
+<p>Thanks to Daniel Fox (a collaborator on this project) and Yevgenia
 Vainsencher for feedback on early versions of this post.</p>
 <h1><a class="header" href="#reusable-utilities-for-iterative-methods" id="reusable-utilities-for-iterative-methods">Reusable utilities for iterative methods</a></h1>
 <p>In our previous <a href="iterative_methods_part_1.html">post</a>, we introduced
@@ -437,6 +445,9 @@ minimum above</p>
 back to this in future posts.</p>
 <h3><a class="header" href="#experimentation" id="experimentation">Experimentation</a></h3>
 <h3><a class="header" href="#use" id="use">Use</a></h3>
+<h1><a class="header" href="#about" id="about">About</a></h1>
+<p>I do applied research using ML, optimization and software engineering.</p>
+<p>Daniel Vainsencher</p>
 
                     </main>
 
